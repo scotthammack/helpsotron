@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import tweepy, re, random, sys
+from textblob import TextBlob
 
 # keys are defined in twitter_secrets.py
 from twitter_secrets import CONSUMER_KEY, CONSUMER_SECRET, ACCESS_KEY, ACCESS_SECRET
@@ -43,13 +44,26 @@ def get_sentence(full_tweet):
 	split_tweet = re.split(r'[.,;!][\s$]?|http|\n', encoded_tweet)
 	for sentence in split_tweet:
 		# make sure that the sentence starts with "you don't have/need to * to *"
-		if re.search("^you don't (have|need) to.* to .*", sentence.lower()):
+		if re.search("^you don't (have|need) to.* to .*", sentence.lower()) and check_inf(sentence):
 			sentence = sentence.rstrip('.,;!')
 			# make sure tweet won't be too long to post
 			if (len(sentence) + len("... but it helps!")) > 140:
 				break
 			print "About to return: %s (%d)" % (sentence, full_tweet.id)
 			return Tweet_with_id(sentence, full_tweet.id)
+	return False
+
+def check_inf(sentence):
+	# Attempt to filter out cases where the second "to" is a
+	# preposition; only use the tweet if it's an infinitive
+#	print "Checking " + sentence
+	m = re.search("(?P<junk>^you don't (have|need) to)(?P<firstverb>.*) to (?P<secondverb>\w+)", sentence.lower())
+	verb = m.group(4)
+	blob = TextBlob(sentence.decode('ascii', errors="replace"))
+#	print blob.tags
+	for word, pos in blob.tags:
+		if word.lower() == m.group(4) and pos == 'VB':
+			return True
 	return False
 
 def filter_results(results):
